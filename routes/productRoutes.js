@@ -1,5 +1,5 @@
 const express = require("express");
-const { protect } = require("../middleware/authMiddleware");
+const { protect } = require("../authMiddleware");
 const {
     createProduct,
     getProducts,
@@ -7,8 +7,8 @@ const {
 } = require("../controllers/productController");
 const router = express.Router();
 
-router.post("/", protect, createProduct);
-router.get("/", getProducts);
-router.patch("/:productId", protect, updateProduct);
+// router.post("/", protect, createProduct);
+// router.get("/", getProducts);
+// router.patch("/:productId", protect, updateProduct);
 
 module.exports = router;

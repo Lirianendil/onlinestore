@@ -8,6 +8,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { Product } = require("./productSchema");
 const { Order } = require("./orderSchema");
+const multer = require("multer")
 
 console.log(require('dotenv').config())
 
@@ -29,7 +30,7 @@ mongoose.connect(process.env.MONGODB_URL, { useNewUrlParser: true, useUnifiedTop
 app.use(express.json());
 
 
-app.post("/register", async (req, res) => {
+app.post("/auth/register", async (req, res) => {
   try {
     const { name, password, email } = req.body;
     const salt = await bcrypt.genSalt(10);
@@ -218,10 +219,63 @@ app.get("/products", async (req, res) => {
   res.status(200).json(products);
 });
 
+app.get("/products/search", async (req, res) => {
+  const {searchString} = req.query
+
+  const products = await Product.find({
+    $or: [
+      {name: new RegExp(searchString, "i")},
+      {description: new RegExp(searchString, "i")}
+    ]
+  })
+
+  res.status(200).json(products)
+})
+
 app.patch("/products/:id", async (req, res) => {
   const { id } = req.params;
   const product = await Product.findByIdAndUpdate(id, req.body, { new: true });
   res.status(200).json(product);
 });
+
+app.delete("/products/:id", async (req, res) => {
+  const { id } = req.params;
+  await Product.findByIdAndDelete(id);
+  res.status(200).json("ok");
+});
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "uploads/"); // Папка, куда будут сохраняться изображения
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, file.fieldname + "-" + uniqueSuffix + ".jpg"); // Генерация уникального имени файла
+  },
+});
+
+
+const upload = multer({ storage: storage });
+
+app.use(express.json());
+
+app.post("/products", upload.single("image"), async (req, res) => {
+  try {
+    const { name, description, price, amount } = req.body;
+    const imageUrl = req.file.path;
+    const product = await Product.create({
+      name,
+      description,
+      price,
+      amount,
+      imageUrl,
+    });
+    res.status(201).json(product);
+  } catch (error) {
+    console.error("Error adding product:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 
 app.listen(PORT, () => console.log("Сервер запущен на порту: " + PORT));
